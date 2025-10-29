@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: student-record-management-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: student-record-management-app
+  template:
+    metadata:
+      labels:
+        app: student-record-management-app
+    spec:
+      containers:
+      - name: app
+        image: adeelahmad2003/student-records:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: MONGODB_URI
+          value: mongodb://mongo:27017/examdb
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: student-record-management-app-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+  selector:
+    app: student-record-management-app

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Student Records Management - CSC418</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>
+          <i class="fas fa-user-graduate"></i> Student Records Management System
+        </h1>
+        <p class="subtitle">CSC418 - Cloud Deployment Pipeline Demo</p>
+      </header>
+
+      <div class="card">
+        <h2><i class="fas fa-plus-circle"></i> Add New Student</h2>
+        <form id="studentForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name"><i class="fas fa-user"></i> Full Name</label>
+              <input
+                id="name"
+                type="text"
+                placeholder="Enter full name"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="registrationNumber"
+                ><i class="fas fa-id-card"></i> Registration Number</label
+              >
+              <input
+                id="registrationNumber"
+                type="text"
+                placeholder="e.g., FA22-BSE-001"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="email"><i class="fas fa-envelope"></i> Email</label>
+              <input
+                id="email"
+                type="email"
+                placeholder="student@example.com"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="phone"
+                ><i class="fas fa-phone"></i> Phone Number</label
+              >
+              <input
+                id="phone"
+                type="tel"
+                placeholder="+92 300 1234567"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="address"
+              ><i class="fas fa-map-marker-alt"></i> Address</label
+            >
+            <textarea
+              id="address"
+              rows="2"
+              placeholder="Enter complete address"
+              required
+            ></textarea>
+          </div>
+
+          <input type="hidden" id="editingId" value="" />
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save"></i>
+              <span id="submitBtnText">Add Student</span>
+            </button>
+            <button
+              type="button"
+              id="cancelBtn"
+              class="btn btn-secondary"
+              style="display: none"
+            >
+              <i class="fas fa-times"></i> Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2><i class="fas fa-list"></i> Student Records</h2>
+        <div id="studentsContainer">
+          <div class="loading">Loading students...</div>
+        </div>
+      </div>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+</html>
