@@ -1,0 +1,21 @@
+---
+# Ansible Playbook for Student Management System Infrastructure Setup
+# This playbook configures servers with Docker, Node.js, and required dependencies
+
+- name: Configure Web Servers
+  hosts: webservers
+  become: yes
+  roles:
+    - common
+    - docker
+    - nodejs
+    - firewall
+    - app
+
+- name: Configure Database Servers
+  hosts: dbservers
+  become: yes
+  roles:
+    - common
+    - docker
+    - firewall

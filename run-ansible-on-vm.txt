@@ -1,0 +1,35 @@
+# Commands to run on the Azure VM
+# Copy and paste these commands one by one after SSH'ing into the VM
+
+# 1. Clean up any partial extraction (if needed)
+sudo rm -rf ansible/
+
+# 2. Extract the ansible files (use -o to overwrite, -q for quiet)
+unzip -o -q ansible.zip
+
+# 3. Install Ansible
+sudo apt update
+sudo apt install -y software-properties-common
+sudo add-apt-repository --yes --update ppa:ansible/ansible
+sudo apt install -y ansible
+
+# 4. Verify Ansible installation
+ansible --version
+
+# 4. Test connectivity to localhost (this VM is web1)
+ansible web1 -i ansible/hosts.ini -m ping
+
+# 5. Run the Ansible playbook (you'll be prompted for sudo password)
+ansible-playbook -i ansible/hosts.ini ansible/playbook.yml --ask-become-pass --limit web1
+
+# Note: We're using --limit web1 to only configure this VM
+# web2 would require additional SSH setup for the jump host
+
+# 6. After completion, verify installations:
+docker --version
+node --version
+sudo ufw status
+
+# 7. If you want to deploy the application via Docker Compose:
+# cd to where docker-compose.yml is and run:
+# docker compose up -d

@@ -1,20 +1,64 @@
 services:
+  # MongoDB Database
   mongo:
     image: mongo:6.0
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    networks:
+      - sms-network
     volumes:
       - mongodata:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  app:
+  # Backend API Service
+  backend:
     build: .
+    restart: unless-stopped
     ports:
       - "3000:3000"
+    networks:
+      - sms-network
     environment:
       - MONGODB_URI=mongodb://mongo:27017/examdb
+      - SESSION_SECRET=${SESSION_SECRET:-default-secret-change-in-production}
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=3000
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend Nginx Service
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - sms-network
+    environment:
+      - API_BASE_URL=http://backend:3000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health.html"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  sms-network:
+    driver: bridge
 
 volumes:
   mongodata:

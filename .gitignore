@@ -3,3 +3,6 @@ npm-debug.log
 .env
 .DS_Store
 coverage
+
+# Kubernetes secrets (never commit actual secrets)
+k8s/app-secrets.yaml

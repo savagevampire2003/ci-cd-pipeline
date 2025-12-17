@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  labels:
+    app: mongodb
+    tier: database
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+    protocol: TCP
+    name: mongodb
+  sessionAffinity: None

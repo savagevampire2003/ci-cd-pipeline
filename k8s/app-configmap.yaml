@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  labels:
+    app: student-management-system
+data:
+  # API URL for frontend to connect to backend service
+  # In Kubernetes, services are accessible via their service name
+  api_url: "http://backend:3000"

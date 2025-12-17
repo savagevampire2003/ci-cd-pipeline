@@ -1,0 +1,80 @@
+---
+# App role - Deploy and configure the application
+
+- name: Copy docker-compose.yml to server
+  copy:
+    src: ../../../docker-compose.yml
+    dest: /opt/sms/docker-compose.yml
+    owner: appuser
+    group: appuser
+    mode: '0644'
+
+- name: Create .env file for application
+  template:
+    src: env.j2
+    dest: /opt/sms/.env
+    owner: appuser
+    group: appuser
+    mode: '0600'
+
+- name: Pull Docker images
+  command: docker compose pull
+  args:
+    chdir: /opt/sms
+  become_user: appuser
+
+- name: Start Docker services
+  command: docker compose up -d
+  args:
+    chdir: /opt/sms
+  become_user: appuser
+  notify: Restart application
+
+- name: Wait for services to be ready
+  wait_for:
+    host: localhost
+    port: "{{ item }}"
+    delay: 5
+    timeout: 60
+  loop:
+    - 80
+    - 3000
+
+- name: Verify backend health endpoint
+  uri:
+    url: http://localhost:3000/health
+    method: GET
+    status_code: 200
+  register: backend_health
+  retries: 5
+  delay: 10
+  until: backend_health.status == 200
+
+- name: Display backend health status
+  debug:
+    msg: "Backend health check: {{ backend_health.json }}"
+
+- name: Verify frontend is accessible
+  uri:
+    url: http://localhost:80/health.html
+    method: GET
+    status_code: 200
+  register: frontend_health
+  retries: 5
+  delay: 10
+  until: frontend_health.status == 200
+
+- name: Display frontend status
+  debug:
+    msg: "Frontend is accessible"
+
+- name: Verify Docker containers are running
+  command: docker compose ps
+  args:
+    chdir: /opt/sms
+  register: docker_ps
+  changed_when: false
+
+- name: Display running containers
+  debug:
+    msg: "{{ docker_ps.stdout_lines }}"

@@ -1,0 +1,24 @@
+# Ansible gitignore
+
+# Log files
+*.log
+ansible.log
+
+# Retry files
+*.retry
+
+# Vault password files
+.vault_pass
+vault_pass.txt
+
+# Local inventory overrides
+hosts.local.ini
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# Python cache
+__pycache__/
+*.pyc

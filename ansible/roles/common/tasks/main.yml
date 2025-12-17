@@ -1,0 +1,50 @@
+---
+# Common role - Base system configuration
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+- name: Install common packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - net-tools
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+
+- name: Set timezone to UTC
+  timezone:
+    name: UTC
+
+- name: Create application user
+  user:
+    name: appuser
+    shell: /bin/bash
+    create_home: yes
+    state: present
+
+- name: Create application directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: appuser
+    group: appuser
+    mode: '0755'
+  loop:
+    - /opt/sms
+    - /opt/sms/logs
+    - /opt/sms/data

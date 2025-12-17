@@ -1,0 +1,70 @@
+---
+# Firewall role - Configure UFW firewall
+
+- name: Install UFW
+  apt:
+    name: ufw
+    state: present
+
+- name: Reset UFW to default
+  ufw:
+    state: reset
+
+- name: Set UFW default policies
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: 'incoming', policy: 'deny' }
+    - { direction: 'outgoing', policy: 'allow' }
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+    comment: 'SSH access'
+
+- name: Allow HTTP
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+    comment: 'HTTP access'
+
+- name: Allow HTTPS
+  ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+    comment: 'HTTPS access'
+
+- name: Allow backend API port
+  ufw:
+    rule: allow
+    port: '3000'
+    proto: tcp
+    comment: 'Backend API'
+  when: "'webservers' in group_names"
+
+- name: Allow MongoDB port
+  ufw:
+    rule: allow
+    port: '27017'
+    proto: tcp
+    comment: 'MongoDB'
+  when: "'dbservers' in group_names"
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+  notify: Reload firewall
+
+- name: Verify firewall status
+  command: ufw status verbose
+  register: firewall_status
+  changed_when: false
+
+- name: Display firewall status
+  debug:
+    msg: "{{ firewall_status.stdout_lines }}"

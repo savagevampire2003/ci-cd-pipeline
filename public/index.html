@@ -1,84 +1,109 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Student Records Management - CSC418</title>
-    <link rel="stylesheet" href="/style.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-    />
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <h1>
-          <i class="fas fa-user-graduate"></i> Student Records Management System
-        </h1>
-        <p class="subtitle">CSC418 - Cloud Deployment Pipeline Demo</p>
-      </header>
 
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Student Records Management - CSC418</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>
+        <i class="fas fa-user-graduate"></i> Student Records Management System
+      </h1>
+      <p class="subtitle">CSC418 - Cloud Deployment Pipeline Demo</p>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar" id="navbar" style="display: none;">
+      <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="home" onclick="switchTab('home')">
+          <i class="fas fa-home"></i> Home
+        </button>
+        <button class="nav-tab" data-tab="students" onclick="switchTab('students')">
+          <i class="fas fa-user-graduate"></i> Students
+        </button>
+        <button class="nav-tab" data-tab="profile" onclick="switchTab('profile')">
+          <i class="fas fa-user"></i> Profile
+        </button>
+      </div>
+      <div class="nav-user">
+        <span id="navUsername" class="nav-username"></span>
+        <button class="btn btn-logout" onclick="logout()">
+          <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
+      </div>
+    </nav>
+
+    <!-- Home Tab Content -->
+    <div id="homeTab" class="tab-content active">
+      <div class="card">
+        <h2><i class="fas fa-chart-line"></i> Dashboard</h2>
+        <div class="dashboard-welcome">
+          <h3>Welcome, <span id="welcomeUsername"></span>!</h3>
+          <p>Manage your student records efficiently with our system.</p>
+        </div>
+        <div class="dashboard-stats">
+          <div class="stat-card">
+            <i class="fas fa-users"></i>
+            <div class="stat-info">
+              <div class="stat-value" id="totalStudents">0</div>
+              <div class="stat-label">Total Students</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <i class="fas fa-user-check"></i>
+            <div class="stat-info">
+              <div class="stat-value" id="recentStudents">0</div>
+              <div class="stat-label">Added This Month</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Students Tab Content -->
+    <div id="studentsTab" class="tab-content" style="display: none;">
       <div class="card">
         <h2><i class="fas fa-plus-circle"></i> Add New Student</h2>
         <form id="studentForm">
           <div class="form-row">
             <div class="form-group">
               <label for="name"><i class="fas fa-user"></i> Full Name</label>
-              <input
-                id="name"
-                type="text"
-                placeholder="Enter full name"
-                required
-              />
+              <input id="name" type="text" placeholder="Enter full name" required />
+              <span class="error-message" id="nameError"></span>
             </div>
             <div class="form-group">
-              <label for="registrationNumber"
-                ><i class="fas fa-id-card"></i> Registration Number</label
-              >
-              <input
-                id="registrationNumber"
-                type="text"
-                placeholder="e.g., FA22-BSE-001"
-                required
-              />
+              <label for="registrationNumber"><i class="fas fa-id-card"></i> Registration Number</label>
+              <input id="registrationNumber" type="text" placeholder="e.g., FA22-BSE-001" required />
+              <span class="error-message" id="registrationNumberError"></span>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="email"><i class="fas fa-envelope"></i> Email</label>
-              <input
-                id="email"
-                type="email"
-                placeholder="student@example.com"
-                required
-              />
+              <input id="email" type="email" placeholder="student@example.com" required />
+              <span class="error-message" id="emailError"></span>
             </div>
             <div class="form-group">
-              <label for="phone"
-                ><i class="fas fa-phone"></i> Phone Number</label
-              >
-              <input
-                id="phone"
-                type="tel"
-                placeholder="+92 300 1234567"
-                required
-              />
+              <label for="phone"><i class="fas fa-phone"></i> Phone Number</label>
+              <input id="phone" type="tel" placeholder="+92 300 1234567" required />
+              <span class="error-message" id="phoneError"></span>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="address"
-              ><i class="fas fa-map-marker-alt"></i> Address</label
-            >
-            <textarea
-              id="address"
-              rows="2"
-              placeholder="Enter complete address"
-              required
-            ></textarea>
+            <label for="address"><i class="fas fa-map-marker-alt"></i> Address</label>
+            <textarea id="address" rows="2" placeholder="Enter complete address" required></textarea>
+            <span class="error-message" id="addressError"></span>
           </div>
+
+          <div class="error-message" id="formError"></div>
 
           <input type="hidden" id="editingId" value="" />
           <div class="form-actions">
@@ -86,12 +111,7 @@
               <i class="fas fa-save"></i>
               <span id="submitBtnText">Add Student</span>
             </button>
-            <button
-              type="button"
-              id="cancelBtn"
-              class="btn btn-secondary"
-              style="display: none"
-            >
+            <button type="button" id="cancelBtn" class="btn btn-secondary" style="display: none">
               <i class="fas fa-times"></i> Cancel
             </button>
           </div>
@@ -105,6 +125,69 @@
         </div>
       </div>
     </div>
+
+    <!-- Profile Tab Content -->
+    <div id="profileTab" class="tab-content" style="display: none;">
+      <div class="card">
+        <h2><i class="fas fa-user"></i> My Profile</h2>
+        <div id="profileView">
+          <div class="profile-info">
+            <div class="profile-field">
+              <label><i class="fas fa-user"></i> Username</label>
+              <div class="profile-value" id="profileUsername"></div>
+            </div>
+            <div class="profile-field">
+              <label><i class="fas fa-envelope"></i> Email</label>
+              <div class="profile-value" id="profileEmail"></div>
+            </div>
+            <div class="profile-field">
+              <label><i class="fas fa-id-card"></i> Full Name</label>
+              <div class="profile-value" id="profileFullName"></div>
+            </div>
+            <div class="profile-field">
+              <label><i class="fas fa-calendar"></i> Member Since</label>
+              <div class="profile-value" id="profileCreatedAt"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="showProfileEdit()">
+            <i class="fas fa-edit"></i> Edit Profile
+          </button>
+        </div>
+
+        <div id="profileEdit" style="display: none;">
+          <form id="profileForm">
+            <div class="form-group">
+              <label for="profileEditEmail">
+                <i class="fas fa-envelope"></i> Email
+              </label>
+              <input id="profileEditEmail" type="email" placeholder="Enter your email" required />
+              <span class="error-message" id="profileEmailError"></span>
+            </div>
+
+            <div class="form-group">
+              <label for="profileEditFullName">
+                <i class="fas fa-id-card"></i> Full Name
+              </label>
+              <input id="profileEditFullName" type="text" placeholder="Enter your full name" required />
+              <span class="error-message" id="profileFullNameError"></span>
+            </div>
+
+            <div class="error-message" id="profileUpdateError"></div>
+            <div class="success-message" id="profileUpdateSuccess"></div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Changes
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="cancelProfileEdit()">
+                <i class="fas fa-times"></i> Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
     <script src="/app.js"></script>
-  </body>
+</body>
+
 </html>

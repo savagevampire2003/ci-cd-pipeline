@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Check</title>
+</head>
+
+<body>
+    <script>
+        // Frontend health check endpoint
+        // Returns 200 OK if the frontend is serving correctly
+        document.write(JSON.stringify({
+            status: 'ok',
+            service: 'frontend',
+            timestamp: new Date().toISOString()
+        }));
+    </script>
+</body>
+
+</html>

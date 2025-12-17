@@ -1,0 +1,304 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  BACKEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/sms-backend
+  FRONTEND_IMAGE: ${{ secrets.DOCKER_USERNAME }}/sms-frontend
+
+jobs:
+  # Stage 1: Lint
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+
+  # Stage 2: Unit Tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Jest tests
+        run: npm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+      
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(npm test -- --coverage --coverageReporters=json-summary | grep -o '"lines":{"total":[0-9.]*' | grep -o '[0-9.]*$' || echo "0")
+          echo "Coverage: $COVERAGE%"
+          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+            echo "Coverage is below 70%"
+            exit 1
+          fi
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+
+  # Stage 3: Build Docker Images
+  build-docker:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Extract commit SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.sha_short }}
+          cache-from: type=registry,ref=${{ env.BACKEND_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.BACKEND_IMAGE }}:buildcache,mode=max
+      
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./frontend.Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.sha_short }}
+          cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache,mode=max
+
+  # Stage 4: Integration Tests
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-docker
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Start services with docker-compose
+        run: |
+          docker-compose up -d
+          sleep 30
+      
+      - name: Check service health
+        run: |
+          echo "Checking backend health..."
+          curl -f http://localhost:3000/health || exit 1
+          echo "Checking frontend health..."
+          curl -f http://localhost:80/health || exit 1
+      
+      - name: Run integration tests
+        run: |
+          docker-compose exec -T backend npm test
+      
+      - name: Stop and cleanup containers
+        if: always()
+        run: docker-compose down -v
+
+  # Stage 5: Deploy to AKS
+  deploy-aks:
+    name: Deploy to Azure Kubernetes Service
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      
+      - name: Extract commit SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      
+      - name: Update Kubernetes manifests with new image tags
+        run: |
+          sed -i "s|<dockerhub-username>/sms-backend:latest|${{ env.BACKEND_IMAGE }}:${{ steps.vars.outputs.sha_short }}|g" k8s/backend-deployment.yaml
+          sed -i "s|<dockerhub-username>/sms-frontend:latest|${{ env.FRONTEND_IMAGE }}:${{ steps.vars.outputs.sha_short }}|g" k8s/frontend-deployment.yaml
+      
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -f k8s/app-configmap.yaml
+          kubectl apply -f k8s/mongodb-statefulset.yaml
+          kubectl apply -f k8s/mongodb-service.yaml
+          kubectl apply -f k8s/backend-deployment.yaml
+          kubectl apply -f k8s/backend-service.yaml
+          kubectl apply -f k8s/frontend-deployment.yaml
+          kubectl apply -f k8s/frontend-service.yaml
+      
+      - name: Wait for rollout to complete
+        run: |
+          kubectl rollout status deployment/backend --timeout=5m
+          kubectl rollout status deployment/frontend --timeout=5m
+          kubectl rollout status statefulset/mongodb --timeout=5m
+      
+      - name: Verify deployment
+        run: |
+          kubectl get pods
+          kubectl get services
+
+  # Stage 6: Selenium Tests
+  selenium-tests:
+    name: Selenium Automated Tests
+    runs-on: ubuntu-latest
+    needs: deploy-aks
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install Selenium and dependencies
+        run: |
+          pip install selenium pytest pytest-html
+          pip install webdriver-manager
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+      
+      - name: Get frontend service URL
+        id: get-url
+        run: |
+          EXTERNAL_IP=""
+          while [ -z $EXTERNAL_IP ]; do
+            echo "Waiting for external IP..."
+            EXTERNAL_IP=$(kubectl get svc frontend -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            [ -z "$EXTERNAL_IP" ] && sleep 10
+          done
+          echo "APP_URL=http://$EXTERNAL_IP" >> $GITHUB_OUTPUT
+          echo "Application URL: http://$EXTERNAL_IP"
+      
+      - name: Wait for application to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -f ${{ steps.get-url.outputs.APP_URL }}/health; then
+              echo "Application is ready"
+              break
+            fi
+            echo "Waiting for application... ($i/30)"
+            sleep 10
+          done
+      
+      - name: Run Selenium tests
+        env:
+          APP_URL: ${{ steps.get-url.outputs.APP_URL }}
+        run: |
+          if [ -d "selenium-tests" ]; then
+            cd selenium-tests
+            pytest --html=report.html --self-contained-html
+          else
+            echo "Selenium tests directory not found, skipping..."
+          fi
+      
+      - name: Upload Selenium test report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: selenium-test-report
+          path: selenium-tests/report.html
+
+  # Notification stage
+  notify:
+    name: Notify Pipeline Status
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, build-docker, integration-tests, deploy-aks, selenium-tests]
+    if: always()
+    
+    steps:
+      - name: Check pipeline status
+        run: |
+          if [ "${{ needs.lint.result }}" == "failure" ] || \
+             [ "${{ needs.unit-tests.result }}" == "failure" ] || \
+             [ "${{ needs.build-docker.result }}" == "failure" ] || \
+             [ "${{ needs.integration-tests.result }}" == "failure" ] || \
+             [ "${{ needs.deploy-aks.result }}" == "failure" ] || \
+             [ "${{ needs.selenium-tests.result }}" == "failure" ]; then
+            echo "Pipeline failed"
+            exit 1
+          else
+            echo "Pipeline succeeded"
+          fi

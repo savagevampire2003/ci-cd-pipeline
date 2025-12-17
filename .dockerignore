@@ -1,5 +1,68 @@
+# Dependencies
 node_modules
-.git
 npm-debug.log
+yarn-error.log
+
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Kiro specs and configuration
+.kiro
+
+# Docker files
+Dockerfile
 docker-compose.yml
+.dockerignore
+*.Dockerfile
+
+# Documentation
 README.md
+*.md
+FRONTEND_DOCKER.md
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.nyc_output/
+*.test.js
+__tests__/
+test/
+tests/
+*.spec.js
+jest.config.js
+
+# Build artifacts
+dist/
+build/
+
+# Kubernetes manifests
+k8s/
+
+# Scripts (but keep nginx-env.sh for frontend)
+*.ps1
+
+# Frontend files (not needed in backend container)
+frontend.Dockerfile
+public/health.html
